@@ -1,11 +1,40 @@
+
 # Feature Specification: [FEATURE NAME]
+
+## Core Principles
+
+### User-Centric Document Access
+The system MUST provide a clear, accessible interface for users to search, view, and archive documents. All features MUST be designed for simplicity and clarity.
+
+### Accessibility (RGAA Compliance)
+All user-facing features MUST comply with RGAA accessibility standards. Accessibility is non-negotiable and must be validated for every release.
+
+### Test-Driven Development & Quality Gates
+All business logic MUST be covered by Jest tests. Every feature MUST be tested with MCP Chrome DevTools. Linting MUST pass with Biome before merge. No code is considered done until these gates are met.
+
+### Modern Web Stack Discipline
+The stack is Next.js (Vercel), S3, PostgreSQL, Tailwind CSS, Headless UI. All code MUST use these technologies unless a justified exception is approved in writing.
+
+### Independent, Incremental Delivery
+Each user story/feature MUST be independently testable and deliver value on its own. Features are delivered incrementally, with each increment validated before proceeding.
+
+### Language and Style Discipline
+All code MUST be written in English. All specifications (spec.md, user stories, requirements) MUST be written in French. No emoji are permitted in any code, documentation, or specifications.
 
 **Feature Branch**: `[###-feature-name]`  
 **Created**: [DATE]  
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
+
 ## User Scenarios & Testing *(mandatory)*
+
+**All user stories/features MUST:**
+- Be independently testable and deliver value
+- Be RGAA compliant (accessibility)
+- Have all business logic tested with Jest
+- Be validated with MCP Chrome DevTools
+- Pass Biome linting
 
 <!--
   IMPORTANT: User stories should be PRIORITIZED as user journeys ordered by importance.

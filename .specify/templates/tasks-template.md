@@ -5,10 +5,37 @@ description: "Task list template for feature implementation"
 
 # Tasks: [FEATURE NAME]
 
+## Core Principles
+
+### User-Centric Document Access
+The system MUST provide a clear, accessible interface for users to search, view, and archive documents. All features MUST be designed for simplicity and clarity.
+
+### Accessibility (RGAA Compliance)
+All user-facing features MUST comply with RGAA accessibility standards. Accessibility is non-negotiable and must be validated for every release.
+
+### Test-Driven Development & Quality Gates
+All business logic MUST be covered by Jest tests. Every feature MUST be tested with MCP Chrome DevTools. Linting MUST pass with Biome before merge. No code is considered done until these gates are met.
+
+### Modern Web Stack Discipline
+The stack is Next.js (Vercel), S3, PostgreSQL, Tailwind CSS, Headless UI. All code MUST use these technologies unless a justified exception is approved in writing.
+
+### Independent, Incremental Delivery
+Each user story/feature MUST be independently testable and deliver value on its own. Features are delivered incrementally, with each increment validated before proceeding.
+
+### Language and Style Discipline
+All code MUST be written in English. All specifications (spec.md, user stories, requirements) MUST be written in French. No emoji are permitted in any code, documentation, or specifications.
+
 **Input**: Design documents from `/specs/[###-feature-name]/`
 **Prerequisites**: plan.md (required), spec.md (required for user stories), research.md, data-model.md, contracts/
 
+
 **Tests**: The examples below include test tasks. Tests are OPTIONAL - only include them if explicitly requested in the feature specification.
+
+**Definition of Done (DoD):**
+- All business logic MUST be tested with Jest
+- Each feature MUST be tested with MCP Chrome DevTools
+- Linting MUST pass with Biome
+- All user-facing features MUST be RGAA compliant (accessibility)
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
@@ -73,13 +100,13 @@ Examples of foundational tasks (adjust based on your project):
 
 ---
 
-## Phase 3: User Story 1 - [Title] (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - [Title] (Priority: P1) MVP
 
 **Goal**: [Brief description of what this story delivers]
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 1 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 1 (OPTIONAL - only if tests requested)
 
 > **NOTE: Write these tests FIRST, ensure they FAIL before implementation**
 
@@ -105,7 +132,7 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 2 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 2 (OPTIONAL - only if tests requested)
 
 - [ ] T018 [P] [US2] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T019 [P] [US2] Integration test for [user journey] in tests/integration/test_[name].py
@@ -127,7 +154,7 @@ Examples of foundational tasks (adjust based on your project):
 
 **Independent Test**: [How to verify this story works on its own]
 
-### Tests for User Story 3 (OPTIONAL - only if tests requested) ⚠️
+### Tests for User Story 3 (OPTIONAL - only if tests requested)
 
 - [ ] T024 [P] [US3] Contract test for [endpoint] in tests/contract/test_[name].py
 - [ ] T025 [P] [US3] Integration test for [user journey] in tests/integration/test_[name].py
@@ -222,7 +249,7 @@ Task: "Create [Entity2] model in src/models/[entity2].py"
 ### Incremental Delivery
 
 1. Complete Setup + Foundational → Foundation ready
-2. Add User Story 1 → Test independently → Deploy/Demo (MVP!)
+2. Add User Story 1 → Test independently → Deploy/Demo (MVP)
 3. Add User Story 2 → Test independently → Deploy/Demo
 4. Add User Story 3 → Test independently → Deploy/Demo
 5. Each story adds value without breaking previous stories
@@ -240,7 +267,11 @@ With multiple developers:
 
 ---
 
+
 ## Notes
+
+- All tasks/features MUST use the approved stack: Next.js, Tailwind CSS, Headless UI, Vercel, S3, PostgreSQL
+- No new frameworks/tools may be introduced without explicit approval
 
 - [P] tasks = different files, no dependencies
 - [Story] label maps task to specific user story for traceability

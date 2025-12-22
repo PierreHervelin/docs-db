@@ -1,4 +1,25 @@
+
 # Implementation Plan: [FEATURE]
+
+## Core Principles
+
+### User-Centric Document Access
+The system MUST provide a clear, accessible interface for users to search, view, and archive documents. All features MUST be designed for simplicity and clarity.
+
+### Accessibility (RGAA Compliance)
+All user-facing features MUST comply with RGAA accessibility standards. Accessibility is non-negotiable and must be validated for every release.
+
+### Test-Driven Development & Quality Gates
+All business logic MUST be covered by Jest tests. Every feature MUST be tested with MCP Chrome DevTools. Linting MUST pass with Biome before merge. No code is considered done until these gates are met.
+
+### Modern Web Stack Discipline
+The stack is Next.js (Vercel), S3, PostgreSQL, Tailwind CSS, Headless UI. All code MUST use these technologies unless a justified exception is approved in writing.
+
+### Independent, Incremental Delivery
+Each user story/feature MUST be independently testable and deliver value on its own. Features are delivered incrementally, with each increment validated before proceeding.
+
+### Language and Style Discipline
+All code MUST be written in English. All specifications (spec.md, user stories, requirements) MUST be written in French. No emoji are permitted in any code, documentation, or specifications.
 
 **Branch**: `[###-feature-name]` | **Date**: [DATE] | **Spec**: [link]
 **Input**: Feature specification from `/specs/[###-feature-name]/spec.md`
@@ -27,11 +48,21 @@
 **Constraints**: [domain-specific, e.g., <200ms p95, <100MB memory, offline-capable or NEEDS CLARIFICATION]  
 **Scale/Scope**: [domain-specific, e.g., 10k users, 1M LOC, 50 screens or NEEDS CLARIFICATION]
 
+
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- All features MUST:
+  - Use Next.js, Tailwind CSS, Headless UI (frontend), Vercel (deploy), S3 (storage), PostgreSQL (DB)
+  - Be RGAA compliant (accessibility)
+  - Have all business logic tested with Jest
+  - Be validated with MCP Chrome DevTools
+  - Pass Biome linting
+  - Be independently testable and deliver value
+  - Not introduce new frameworks/tools without explicit approval
+
+Any violation must be justified in the Complexity Tracking section below.
 
 ## Project Structure
 
