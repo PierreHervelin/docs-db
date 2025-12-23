@@ -1,0 +1,712 @@
+openapi: 3.0.3
+info:
+  title: Doc-DB Authentication API
+  description: |
+    Authentication API for Doc-DB application.
+    Implements user registration, login, email verification, password reset, and profile management.
+    
+    **Key Features**:
+    - JWT-based authentication with refresh tokens
+    - Email verification required for new accounts
+    - Rate limiting on sensitive operations
+    - RGAA AA accessible error messages
+    
+    **Security**:
+    - Passwords hashed with bcrypt (12 rounds)
+    - JWT tokens with 30-minute expiration
+    - Refresh tokens with 30-day expiration (optional "Remember Me")
+    - Account lockout after 5 failed login attempts (15 minutes)
+  version: 1.0.0
+  contact:
+    name: Doc-DB Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3000/api
+    description: Development server
+  - url: https://docdb.app/api
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication operations
+  - name: Account Management
+    description: User profile and settings operations
+
+paths:
+  /auth/signup:
+    post:
+      summary: Create new user account
+      description: |
+        Registers a new user with username, email, and password.
+        Sends verification email to provided address.
+        Account is created but marked as unverified.
+        
+        **Rate Limit**: 3 signups per IP per hour
+        
+        **Functional Requirements**: FR-001, FR-002, FR-003, FR-004, FR-021, FR-034, FR-035
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - username
+                - email
+                - password
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 30
+                  pattern: '^[a-zA-Z0-9_-]+$'
+                  example: john_doe
+                  description: Alphanumeric with dash and underscore only
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                  description: RFC 5322 compliant email address
+                password:
+                  type: string
+                  minLength: 8
+                  example: SecurePass123!
+                  description: Min 8 chars, uppercase, lowercase, digit, special char
+      responses:
+        '201':
+          description: Account created successfully, verification email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  userId:
+                    type: string
+                    format: uuid
+                    example: 550e8400-e29b-41d4-a716-446655440000
+                  message:
+                    type: string
+                    example: Account created. Please check your email to verify your account.
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                invalidUsername:
+                  value:
+                    error: Invalid username
+                    message: Username must be 3-30 characters, alphanumeric with dash/underscore only
+                    code: VALIDATION_ERROR
+                invalidEmail:
+                  value:
+                    error: Invalid email
+                    message: Email must be a valid email address
+                    code: VALIDATION_ERROR
+                weakPassword:
+                  value:
+                    error: Weak password
+                    message: Password must be at least 8 characters with uppercase, lowercase, digit, and special character
+                    code: VALIDATION_ERROR
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                duplicateEmail:
+                  value:
+                    error: Email already exists
+                    message: An account with this email already exists. Please log in or reset your password.
+                    code: DUPLICATE_EMAIL
+                duplicateUsername:
+                  value:
+                    error: Username already taken
+                    message: This username is already taken. Try john_doe_123 instead.
+                    code: DUPLICATE_USERNAME
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Rate limit exceeded
+                message: Too many signup attempts from this IP. Please try again later.
+                code: RATE_LIMIT_EXCEEDED
+        '500':
+          description: Email send failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Email delivery failed
+                message: Unable to send verification email. Please try again later.
+                code: EMAIL_SEND_FAILED
+
+  /auth/login:
+    post:
+      summary: Authenticate user
+      description: |
+        Authenticates user with email/username and password.
+        Returns access token and optional refresh token.
+        
+        **Account Locking**: 5 failed attempts → 15 minute lockout
+        
+        **Functional Requirements**: FR-006, FR-007, FR-008, FR-015, FR-029, FR-030, FR-031, FR-041, FR-042
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - login
+                - password
+              properties:
+                login:
+                  type: string
+                  example: john_doe
+                  description: Username or email address
+                password:
+                  type: string
+                  example: SecurePass123!
+                rememberMe:
+                  type: boolean
+                  default: false
+                  description: Generate 30-day refresh token
+      responses:
+        '200':
+          description: Login successful
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie with access token JWT
+              schema:
+                type: string
+                example: session=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...; HttpOnly; Secure; SameSite=Lax; Max-Age=1800
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT access token (30 min expiration)
+                  refreshToken:
+                    type: string
+                    nullable: true
+                    example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+                    description: JWT refresh token (30 days, only if rememberMe=true)
+                  user:
+                    $ref: '#/components/schemas/User'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Invalid credentials
+                message: The username/email or password you entered is incorrect.
+                code: INVALID_CREDENTIALS
+        '403':
+          description: Email not verified
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Email not verified
+                message: Please verify your email address before logging in. Check your inbox or request a new verification link.
+                code: EMAIL_NOT_VERIFIED
+        '423':
+          description: Account locked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Account locked
+                  message:
+                    type: string
+                    example: Too many failed login attempts. Your account is locked for 15 minutes.
+                  code:
+                    type: string
+                    example: ACCOUNT_LOCKED
+                  lockedUntil:
+                    type: string
+                    format: date-time
+                    example: '2025-12-23T14:30:00Z'
+
+  /auth/logout:
+    post:
+      summary: Log out user
+      description: |
+        Invalidates current session and refresh token (if provided).
+        Adds tokens to blacklist for immediate revocation.
+        
+        **Functional Requirements**: FR-013, FR-032, FR-047
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                refreshToken:
+                  type: string
+                  nullable: true
+                  description: Refresh token to revoke (optional)
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/verify-email:
+    post:
+      summary: Verify email address
+      description: |
+        Verifies user email with token from verification link.
+        Marks account as verified and establishes session.
+        
+        **Functional Requirements**: FR-034, FR-039, FR-040
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+              properties:
+                token:
+                  type: string
+                  example: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                  description: Email verification token from link
+      responses:
+        '200':
+          description: Email verified successfully
+          headers:
+            Set-Cookie:
+              description: HTTP-only cookie with access token JWT
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: JWT access token for new session
+                  user:
+                    $ref: '#/components/schemas/User'
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                expired:
+                  value:
+                    error: Token expired
+                    message: This verification link has expired. Please request a new one.
+                    code: TOKEN_EXPIRED
+                invalid:
+                  value:
+                    error: Invalid token
+                    message: This verification link is invalid or has already been used.
+                    code: INVALID_TOKEN
+
+  /auth/resend-verification:
+    post:
+      summary: Resend email verification
+      description: |
+        Generates new verification token and resends email.
+        Invalidates all previous verification tokens.
+        
+        **Rate Limit**: 3 requests per account per hour
+        
+        **Functional Requirements**: FR-037, FR-038
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+      responses:
+        '200':
+          description: Verification email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: If this email is registered, a new verification link has been sent.
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Rate limit exceeded
+                message: Too many verification email requests. Please try again later.
+                code: RATE_LIMIT_EXCEEDED
+        '500':
+          description: Email send failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/forgot-password:
+    post:
+      summary: Request password reset
+      description: |
+        Initiates password reset process by sending reset link to email.
+        Always returns success message (security: don't reveal account existence).
+        
+        **Rate Limit**: 3 requests per IP per hour
+        
+        **Functional Requirements**: FR-009, FR-010, FR-011, FR-012
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+      responses:
+        '200':
+          description: Reset email sent (or email not found, same message)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: If this email is registered, a password reset link has been sent.
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '500':
+          description: Email send failure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /auth/reset-password:
+    post:
+      summary: Reset password with token
+      description: |
+        Resets password using token from reset link.
+        Revokes all refresh tokens for security.
+        
+        **Functional Requirements**: FR-010, FR-019, FR-020, FR-046
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - newPassword
+              properties:
+                token:
+                  type: string
+                  example: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                newPassword:
+                  type: string
+                  minLength: 8
+                  example: NewSecurePass123!
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Password reset successfully. You can now log in with your new password.
+        '400':
+          description: Invalid token or weak password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                expired:
+                  value:
+                    error: Token expired
+                    message: This reset link has expired. Please request a new one.
+                    code: TOKEN_EXPIRED
+                weakPassword:
+                  value:
+                    error: Weak password
+                    message: Password must be at least 8 characters with uppercase, lowercase, digit, and special character.
+                    code: VALIDATION_ERROR
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      description: |
+        Generates new access token using refresh token.
+        Implements token rotation (old refresh token revoked, new one issued).
+        
+        **Functional Requirements**: FR-044, FR-045, FR-046
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refreshToken
+              properties:
+                refreshToken:
+                  type: string
+                  example: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+      responses:
+        '200':
+          description: Tokens refreshed successfully
+          headers:
+            Set-Cookie:
+              description: Updated HTTP-only cookie with new access token
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accessToken:
+                    type: string
+                    description: New JWT access token (30 min)
+                  refreshToken:
+                    type: string
+                    description: New JWT refresh token (30 days)
+        '401':
+          description: Invalid, expired, or revoked refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                expired:
+                  value:
+                    error: Token expired
+                    message: Refresh token has expired. Please log in again.
+                    code: TOKEN_EXPIRED
+                revoked:
+                  value:
+                    error: Token revoked
+                    message: This refresh token has been revoked. Please log in again.
+                    code: TOKEN_REVOKED
+
+  /auth/update-profile:
+    put:
+      summary: Update user profile
+      description: |
+        Updates username, email, or password.
+        Email changes require verification via new email address.
+        Password changes revoke all refresh tokens.
+        
+        **Functional Requirements**: FR-016, FR-017, FR-018, FR-019, FR-020, FR-046
+      tags:
+        - Account Management
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                username:
+                  type: string
+                  minLength: 3
+                  maxLength: 30
+                  pattern: '^[a-zA-Z0-9_-]+$'
+                  nullable: true
+                email:
+                  type: string
+                  format: email
+                  nullable: true
+                currentPassword:
+                  type: string
+                  nullable: true
+                  description: Required for password change
+                newPassword:
+                  type: string
+                  minLength: 8
+                  nullable: true
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/User'
+                  message:
+                    type: string
+                    example: Profile updated successfully
+                  emailChangeRequested:
+                    type: boolean
+                    description: True if email change requires verification
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Wrong current password
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: Invalid password
+                message: Current password is incorrect
+                code: INVALID_PASSWORD
+        '409':
+          description: Username or email already exists
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT access token from /auth/login
+
+  schemas:
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: 550e8400-e29b-41d4-a716-446655440000
+        username:
+          type: string
+          example: john_doe
+        email:
+          type: string
+          format: email
+          example: john@example.com
+        emailVerified:
+          type: boolean
+          example: true
+        createdAt:
+          type: string
+          format: date-time
+          example: '2025-12-23T10:00:00Z'
+        lastLoginAt:
+          type: string
+          format: date-time
+          nullable: true
+          example: '2025-12-23T14:30:00Z'
+
+    Error:
+      type: object
+      required:
+        - error
+        - message
+        - code
+      properties:
+        error:
+          type: string
+          example: Validation error
+          description: Error title
+        message:
+          type: string
+          example: Detailed error message for user display
+          description: RGAA-compliant, user-friendly error message
+        code:
+          type: string
+          example: VALIDATION_ERROR
+          description: Machine-readable error code
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+          nullable: true
+          example:
+            email: Invalid email format
+            password: Password too weak
+          description: Field-specific validation errors

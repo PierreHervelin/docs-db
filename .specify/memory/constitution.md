@@ -1,12 +1,16 @@
 
 <!--
 Sync Impact Report
-Version change: 1.0.0 → 2.0.0
-Modified principles: Language/emoji rule clarified and enforced, all principles reformatted for clarity
-Added sections: None
-Removed sections: Artefacts, emojis, and duplicated/incorrect principle blocks in all templates
-Templates updated: plan-template.md (✅), spec-template.md (✅), tasks-template.md (✅)
+Version change: 2.0.0 → 2.1.0
+Modified principles: Core Principle IV (Modern Web Stack Discipline) - Added Prisma ORM as mandatory database access layer
+Added sections: Prisma ORM to Stack & Accessibility Requirements
+Removed sections: None
+Templates requiring updates:
+  - plan-template.md (✅ updated)
+  - spec-template.md (✅ updated)
+  - tasks-template.md (✅ updated)
 Follow-up TODOs: None
+Rationale: Prisma ORM is now the standard database access layer for PostgreSQL. It provides type-safe queries, automatic migrations, excellent TypeScript integration, and is the recommended approach for Next.js + PostgreSQL projects. This change codifies existing best practice.
 -->
 
 # Doc-DB Constitution
@@ -27,8 +31,8 @@ All business logic MUST be covered by Jest tests. Every feature MUST be tested w
 *Rationale: Prevents regressions, enforces quality, and ensures maintainability.*
 
 ### IV. Modern Web Stack Discipline
-The stack is Next.js (deployed on Vercel), S3 for storage, PostgreSQL for data, Tailwind CSS and Headless UI for frontend. All code MUST use these technologies unless a justified exception is approved in writing.
-*Rationale: Ensures consistency, maintainability, and leverages team expertise.*
+The stack is Next.js (deployed on Vercel), S3 for storage, PostgreSQL with Prisma ORM for data, Tailwind CSS and Headless UI for frontend. All code MUST use these technologies unless a justified exception is approved in writing.
+*Rationale: Ensures consistency, maintainability, and leverages team expertise. Prisma provides type-safe database access and automatic migrations.*
 
 
 ### V. Independent, Incremental Delivery
@@ -45,7 +49,7 @@ All code MUST be written in English. All specifications (spec.md, user stories, 
 - **Frontend**: Next.js, Tailwind CSS, Headless UI
 - **Backend/Deployment**: Vercel
 - **Storage**: S3
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL with Prisma ORM
 - **Accessibility**: RGAA compliance is mandatory for all user-facing features
 - **Testing**: Jest for business logic, MCP Chrome DevTools for feature validation
 - **Linting**: Biome
@@ -72,5 +76,5 @@ No other major frameworks or tools may be introduced without explicit approval a
 - Any complexity or deviation from the stack or workflow must be justified and documented in the plan.
 - Use this constitution as the primary reference for all runtime and development guidance.
 
-**Version**: 2.0.0 | **Ratified**: 2025-12-22 | **Last Amended**: 2025-12-22
-<!-- Version: 2.0.0 | Ratified: 2025-12-22 | Last Amended: 2025-12-22 -->
+**Version**: 2.1.0 | **Ratified**: 2025-12-22 | **Last Amended**: 2025-12-23
+<!-- Version: 2.1.0 | Ratified: 2025-12-22 | Last Amended: 2025-12-23 -->
