@@ -1,0 +1,153 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: docdb-postgres-prod
+    restart: always
+    environment:
+      POSTGRES_USER: ${DATABASE_USER:-docdb}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD:?Database password required}
+      POSTGRES_DB: ${DATABASE_NAME:-docdb}
+      # Enable SSL
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    ports:
+      - '${DATABASE_PORT:-5432}:5432'
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./docker/postgres/ssl:/var/lib/postgresql/ssl:ro
+    command:
+      - postgres
+      - -c
+      - ssl=on
+      - -c
+      - ssl_cert_file=/var/lib/postgresql/ssl/server.crt
+      - -c
+      - ssl_key_file=/var/lib/postgresql/ssl/server.key
+      - -c
+      - ssl_ca_file=/var/lib/postgresql/ssl/ca.crt
+      - -c
+      - max_connections=100
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=1GB
+      - -c
+      - maintenance_work_mem=64MB
+      - -c
+      - checkpoint_completion_target=0.9
+      - -c
+      - wal_buffers=16MB
+      - -c
+      - default_statistics_target=100
+      - -c
+      - random_page_cost=1.1
+      - -c
+      - effective_io_concurrency=200
+      - -c
+      - work_mem=2621kB
+      - -c
+      - huge_pages=off
+      - -c
+      - min_wal_size=1GB
+      - -c
+      - max_wal_size=4GB
+      - -c
+      - log_statement=all
+      - -c
+      - log_duration=on
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DATABASE_USER:-docdb}']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - docdb-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: docdb-minio-prod
+    restart: always
+    command: server /data --console-address ":9001" --certs-dir /root/.minio/certs
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:?MinIO root user required}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:?MinIO root password required}
+      MINIO_BROWSER_REDIRECT_URL: ${MINIO_CONSOLE_URL:-http://localhost:9001}
+      # Enable encryption at rest
+      MINIO_KMS_SECRET_KEY: ${MINIO_KMS_SECRET_KEY:?KMS secret key required}
+    ports:
+      - '${MINIO_PORT:-9000}:9000'
+      - '${MINIO_CONSOLE_PORT:-9001}:9001'
+    volumes:
+      - minio_prod_data:/data
+      - ./docker/minio/certs:/root/.minio/certs:ro
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 40s
+    networks:
+      - docdb-network
+
+  # Redis for rate limiting and session storage (production)
+  redis:
+    image: redis:7-alpine
+    container_name: docdb-redis-prod
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD:?Redis password required}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --save 900 1
+      --save 300 10
+      --save 60 10000
+      --appendonly yes
+      --appendfsync everysec
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redis_prod_data:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', '--pass', '${REDIS_PASSWORD}', 'ping']
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    networks:
+      - docdb-network
+
+  # Backup service for automated PostgreSQL backups
+  postgres-backup:
+    image: prodrigestivill/postgres-backup-local:16-alpine
+    container_name: docdb-postgres-backup
+    restart: always
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: ${DATABASE_NAME:-docdb}
+      POSTGRES_USER: ${DATABASE_USER:-docdb}
+      POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+      BACKUP_KEEP_WEEKS: 4
+      BACKUP_KEEP_MONTHS: 6
+      HEALTHCHECK_PORT: 8080
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - docdb-network
+
+volumes:
+  postgres_prod_data:
+    driver: local
+  minio_prod_data:
+    driver: local
+  redis_prod_data:
+    driver: local
+
+networks:
+  docdb-network:
+    driver: bridge

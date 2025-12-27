@@ -1,0 +1,141 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  // SSL/TLS configuration via connection string:
+  // Development: ?sslmode=disable (localhost only)
+  // Production:  ?sslmode=require (managed DB over internet)
+}
+
+model User {
+  id                    String   @id @default(uuid())
+  username              String   @unique
+  usernameNormalized    String   @unique
+  email                 String   @unique
+  emailNormalized       String   @unique
+  emailVerified         Boolean  @default(false)
+  passwordHash          String
+  firstName             String
+  lastName              String
+  failedLoginAttempts   Int      @default(0)
+  lockedUntil           DateTime?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  lastLoginAt           DateTime?
+  
+  refreshTokens         RefreshToken[]
+  revokedTokens         RevokedToken[]
+  emailVerificationTokens EmailVerificationToken[]
+  passwordResetTokens   PasswordResetToken[]
+  emailChangeRequests   EmailChangeRequest[]
+  securityEvents        SecurityEvent[]
+  
+  @@index([usernameNormalized])
+  @@index([emailNormalized])
+  @@index([lockedUntil])
+  @@map("users")
+}
+
+model RefreshToken {
+  id              String   @id @default(uuid())
+  jti             String   @unique
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash       String
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  lastUsedAt      DateTime @default(now())
+  revokedAt       DateTime?
+  userAgent       String?
+  ipAddress       String?
+  
+  @@index([userId])
+  @@index([expiresAt])
+  @@index([jti, revokedAt])
+  @@map("refresh_tokens")
+}
+
+model RevokedToken {
+  id              String   @id @default(uuid())
+  jti             String   @unique
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenType       String
+  expiresAt       DateTime
+  revokedAt       DateTime @default(now())
+  reason          String
+  
+  @@index([jti])
+  @@index([expiresAt])
+  @@index([userId, revokedAt])
+  @@map("revoked_tokens")
+}
+
+model EmailVerificationToken {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token           String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  usedAt          DateTime?
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("email_verification_tokens")
+}
+
+model PasswordResetToken {
+  id              String   @id @default(uuid())
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token           String   @unique
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  usedAt          DateTime?
+  
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("password_reset_tokens")
+}
+
+model EmailChangeRequest {
+  id                  String   @id @default(uuid())
+  userId              String
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  newEmail            String
+  newEmailNormalized  String
+  token               String   @unique
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+  verifiedAt          DateTime?
+  
+  @@index([userId])
+  @@index([token])
+  @@index([newEmailNormalized])
+  @@index([expiresAt])
+  @@map("email_change_requests")
+}
+
+model SecurityEvent {
+  id              String   @id @default(uuid())
+  userId          String?
+  user            User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  eventType       String
+  ipAddress       String?
+  userAgent       String?
+  metadata        Json?
+  createdAt       DateTime @default(now())
+  
+  @@index([userId, createdAt])
+  @@index([eventType, createdAt])
+  @@index([createdAt])
+  @@index([ipAddress])
+  @@map("security_events")
+}

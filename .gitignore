@@ -1,1 +1,59 @@
+# MCP Configuration
 mcp.json
+
+# Node.js / JavaScript / TypeScript
+node_modules/
+.pnpm-store/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.npm
+*.tsbuildinfo
+dist/
+build/
+out/
+*.log
+
+# Next.js
+.next/
+.vercel
+
+# Environment variables
+.env
+.env*.local
+.env.production
+.env.development
+
+# Prisma
+prisma/migrations/*.sql
+prisma/*.db
+prisma/*.db-journal
+
+# Testing
+coverage/
+.nyc_output/
+*.test.js.snap
+.jest-cache/
+
+# IDE / Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+.cache/
+
+# Docker
+docker-compose.override.yml
+
+# Prisma generated files (optional - some keep in git)
+# node_modules/.prisma/
